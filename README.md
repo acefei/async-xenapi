@@ -1,41 +1,95 @@
-# A Typescript bindings for XenAPI
-A Typescript bindings for XenAPI, which is inspired by [Python XenAPI](https://xapi-project.github.io/xen-api/usage.html).
+# async-xenapi
 
-## Usage
-Install lib from npm repository
+Async bindings for [XenAPI](https://xapi-project.github.io/xen-api) — available in both Python and JavaScript/TypeScript.
+
+## Structure
+
 ```
-$ npm install xen-api-ts
+async-xenapi/
+├── python/          # Python async library (PyPI: async-xenapi)
+│   ├── src/
+│   ├── tests/
+│   └── README.md
+├── javascript/      # TypeScript async library (npm: async-xenapi)
+│   ├── src/
+│   ├── tests/
+│   └── README.md
+└── README.md
 ```
 
-The usage of Typescript XenAPI is almost identical to the Python XenAPI, except it's asynchronous and requires async/await.
+## Quick Start
+
+**Python** — see [python/README.md](python/README.md)
+
+```python
+from async_xenapi import AsyncXenAPISession
+import asyncio
+
+async def main():
+    session = AsyncXenAPISession("https://xen-host")
+    await session.login_with_password("root", "password")
+    hosts = await session.xenapi.host.get_all()
+    print(hosts)
+    await session.logout()
+
+asyncio.run(main())
 ```
-import { xapi_client } from "xen-api-ts";
+
+**JavaScript / TypeScript** — see [javascript/README.md](javascript/README.md)
+
+```typescript
+import { AsyncXenAPISession } from "async-xenapi";
 
 async function main() {
-  const session = xapi_client(process.env.HOST_URL);
-  try {
-    await session.login_with_password(process.env.USERNAME, process.env.PASSWORD);
-    const hosts = await session.xenapi.host.get_all();
-    console.log(hosts); // Do something with the retrieved hosts
-  } finally {
-    await session.xenapi.session.logout();
-  }
+  const session = new AsyncXenAPISession(process.env.HOST_URL);
+  await session.login_with_password(process.env.USERNAME, process.env.PASSWORD);
+  const hosts = await session.xenapi.host.get_all();
+  console.log(hosts);
+  await session.logout();
 }
 
 main();
 ```
 
-For more example usage, please find in tests folder.
+Both implementations follow the same API conventions as the official [XenAPI SDK](https://xapi-project.github.io/xen-api/usage.html).
+
+## Best Practices
+
+For detailed examples with code, see the language-specific READMEs:
+
+- [Python best practices](python/README.md#best-practices)
+- [JavaScript best practices](javascript/README.md#best-practices)
+
+### Key Takeaways
+
+1. **Prefer `get_all_records()` over `get_all()` + N×`get_field()`** — one round-trip instead of N+1.
+2. **Use `asyncio.gather()` / `Promise.all()`** to fire independent calls concurrently — **~2x faster** than sequential.
+3. **Always call `logout()`** in a `finally` block to release the server-side session.
+
+## Benchmark
+
+A benchmark suite compares the official sync [XenAPI SDK](https://pypi.org/project/XenAPI/) (XML-RPC) against async-xenapi (JSON-RPC over aiohttp):
+
 ```
-$ git clone git@github.com:acefei/xen-api-ts.git
-$ npm install
-$ echo "HOST_URL=xxx" >> .env
-$ echo "USERNAME=xxx" >> .env
-$ echo "PASSWORD=xxx" >> .env
-$ npm test tests/getXapiVersion.ts
+make py-bench
 ```
 
-And please find the all of Classes and its Fields in [XenAPI Reference](https://xapi-project.github.io/xen-api)
+Tested against a single XenServer host (33 VMs, 6 SRs, 4 networks):
+
+| Step               | Sync XenAPI | Async XenAPI | Speedup  |
+|--------------------|------------:|-------------:|---------:|
+| login              |        1.5s |         1.3s |     1.1x |
+| xapi_version       |        1.3s |         1.7s |     0.7x |
+| hosts              |        1.9s |         1.5s |     1.2x |
+| vms                |        3.8s |         3.9s |     1.0x |
+| storage            |       628ms |        617ms |     1.0x |
+| networks           |       315ms |        278ms |     1.1x |
+| **all_concurrent** |    **3.2s** |     **1.7s** | **1.9x** |
+| logout             |       313ms |        310ms |     1.0x |
+| **TOTAL**          |   **12.8s** |    **11.3s** | **1.1x** |
+
+For individual sequential calls, sync and async perform similarly — the bottleneck is network latency. The async advantage appears when firing multiple independent requests concurrently via `asyncio.gather()`, where `all_concurrent` (fetching hosts, VMs, SRs, and networks in parallel) runs **~2x faster** than the equivalent sequential sync calls.
 
 ## License
-This repository is licensed under the MIT License.
+
+LGPL-2.1-only

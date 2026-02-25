@@ -1,0 +1,42 @@
+{
+  "name": "async-xenapi",
+  "version": "1.0.0",
+  "description": "Async XenAPI session via JSON-RPC",
+  "homepage": "https://github.com/acefei/async-xenapi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/acefei/async-xenapi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/acefei/async-xenapi/issues"
+  },
+  "main": "dist/XenAPI.js",
+  "types": "dist/XenAPI.d.ts",
+  "files": [
+    "/dist"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc",
+    "lint": "biome check src/ tests/",
+    "fmt": "biome check --write src/ tests/",
+    "lint:ci": "biome check --diagnostic-level=error src/ tests/"
+  },
+  "keywords": [
+    "xenserver",
+    "xen-api",
+    "typescript",
+    "async"
+  ],
+  "author": "Su Fei <acefei@163.com>",
+  "license": "LGPL-2.1-only",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@types/node": "^20.8.9",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "vitest": "^3.0.0",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {}
+}
