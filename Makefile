@@ -56,13 +56,19 @@ js-clean: ## Clean JavaScript temporary and build artifacts
 # ---------------------------------------------------------------------------
 # Combined
 # ---------------------------------------------------------------------------
-.PHONY: lint fmt clean release-patch release-minor release-major dry-publish
+.PHONY: lint fmt clean check-version release-patch release-minor release-major dry-publish
 
 lint: py-lint js-lint ## Run all linters
 
 fmt: py-fmt js-fmt ## Run all formatters
 
 clean: py-clean js-clean ## Clean all temporary/build artifacts
+
+check-version: ## Check published package versions on PyPI and npm
+	@pypi_ver=$$(curl -s https://pypi.org/pypi/async-xenapi/json | python3 -c "import sys,json; print(json.load(sys.stdin)['info']['version'])"); \
+	npm_ver=$$(curl -s https://registry.npmjs.org/async-xenapi/latest | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])"); \
+	echo "PyPI  async-xenapi $$pypi_ver"; \
+	echo "npm   async-xenapi $$npm_ver"
 
 # ---------------------------------------------------------------------------
 # Release — bump version, tag, and push to trigger publish workflow
