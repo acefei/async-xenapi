@@ -1,6 +1,6 @@
 [project]
 name = "async-xenapi"
-version = "1.0.3"
+version = "1.0.4"
 description = "An async library for XenAPI"
 readme = "README.md"
 license = { text = "LGPL-2.1-only" }
