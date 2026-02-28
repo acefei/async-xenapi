@@ -11,18 +11,14 @@ permissions:
 
 jobs:
   create-release:
-    name: Create GitHub Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Create release with auto-generated notes
-        run: gh release create ${{ github.ref_name }} --generate-notes --title "${{ github.ref_name }}"
+      - run: gh release create ${{ github.ref_name }} --generate-notes --title "${{ github.ref_name }}"
         env:
           GH_TOKEN: ${{ github.token }}
 
   publish-python:
-    name: Publish to PyPI
     needs: create-release
     runs-on: ubuntu-latest
     defaults:
@@ -32,19 +28,11 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-
       - uses: astral-sh/setup-uv@v5
-
-      - name: Set version and build
-        run: |
-          uv version ${GITHUB_REF_NAME#v}
-          uv build
-
-      - name: Publish to PyPI
-        run: uv publish --trusted-publishing always
+      - run: uv build
+      - run: uv publish
 
   publish-javascript:
-    name: Publish to npm
     needs: create-release
     runs-on: ubuntu-latest
     defaults:
@@ -52,20 +40,10 @@ jobs:
         working-directory: javascript
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-
-      - name: Upgrade npm for trusted publishing support
-        run: npm install -g npm@latest
-
-      - name: Install, set version, and build
-        run: |
-          npm install
-          npm version ${GITHUB_REF_NAME#v} --no-git-tag-version
-          npm run build
-
-      - name: Publish to npm
-        run: npm publish
+      - run: npm ci 
+      - run: npm run build
+      - run: npm publish
