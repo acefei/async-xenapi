@@ -1,7 +1,7 @@
 [project]
 name = "async-xenapi"
 version = "1.0.3"
-description = "Async XenAPI session via JSON-RPC"
+description = "An async library for XenAPI"
 readme = "README.md"
 license = { text = "LGPL-2.1-only" }
 authors = [{ name = "Su Fei", email = "acefei@163.com" }]

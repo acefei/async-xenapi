@@ -1,5 +1,5 @@
 /**
- * Async XenAPI session via JSON-RPC
+ * An async library for XenAPI
  *
  * Usage mirrors the Python XenAPI:
  *

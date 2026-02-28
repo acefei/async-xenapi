@@ -1,6 +1,6 @@
 # async-xenapi (JavaScript / TypeScript)
 
-An async JavaScript/TypeScript library for [XenAPI](https://xapi-project.github.io/xen-api).
+An async library for [XenAPI](https://xapi-project.github.io/xen-api).
 
 ## Install
 

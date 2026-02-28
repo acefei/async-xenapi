@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Async XenAPI session via JSON-RPC
+"""An async library for XenAPI
 
 Usage mirrors the synchronous XenAPI SDK:
 
