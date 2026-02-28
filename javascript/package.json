@@ -1,6 +1,6 @@
 {
   "name": "async-xenapi",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "An async library for XenAPI",
   "homepage": "https://github.com/acefei/async-xenapi",
   "repository": {
