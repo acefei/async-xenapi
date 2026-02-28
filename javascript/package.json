@@ -1,6 +1,6 @@
 {
   "name": "async-xenapi",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Async XenAPI session via JSON-RPC",
   "homepage": "https://github.com/acefei/async-xenapi",
   "repository": {

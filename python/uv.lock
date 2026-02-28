@@ -76,7 +76,7 @@ wheels = [
 
 [[package]]
 name = "async-xenapi"
-version = "1.0.1"
+version = "1.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
