@@ -19,9 +19,8 @@
 // JSON-RPC helpers
 // ---------------------------------------------------------------------------
 
-// XenServer typically uses self-signed certificates — skip TLS verification
-// (mirrors Python's ssl.CERT_NONE behaviour).
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+// XenServer typically uses self-signed certificates with TLS verification
+import { request as httpsRequest } from "node:https";
 
 type JsonRpcResponse = { result?: unknown; error?: unknown };
 
@@ -29,16 +28,37 @@ function _jsonrpcReq(method: string, params: unknown[]): object {
     return { jsonrpc: "2.0", method, params, id: crypto.randomUUID() };
 }
 
-async function _post(url: string, payload: object): Promise<JsonRpcResponse> {
-    const response = await fetch(url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
+function _post(url: string, payload: object): Promise<JsonRpcResponse> {
+    return new Promise((resolve, reject) => {
+        const body = JSON.stringify(payload);
+        const req = httpsRequest(
+            url,
+            {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json",
+                    "content-length": Buffer.byteLength(body),
+                },
+                rejectUnauthorized: false,
+            },
+            (res) => {
+                let data = "";
+                res.on("data", (chunk) => {
+                    data += chunk;
+                });
+                res.on("end", () => {
+                    try {
+                        resolve(JSON.parse(data));
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            },
+        );
+        req.on("error", reject);
+        req.write(body);
+        req.end();
     });
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    return response.json() as Promise<JsonRpcResponse>;
 }
 
 // ---------------------------------------------------------------------------

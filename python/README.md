@@ -4,8 +4,6 @@ An async library for [XenAPI](https://xapi-project.github.io/xen-api).
 
 ## Install
 
-Requires **Python 3.14+**.
-
 ```
 pip install async-xenapi
 ```
@@ -15,6 +13,8 @@ Or with `uv`:
 ```
 uv add async-xenapi
 ```
+
+Requires **Python 3.12+**.
 
 ## Usage
 

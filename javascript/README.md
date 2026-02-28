@@ -8,7 +8,7 @@ An async library for [XenAPI](https://xapi-project.github.io/xen-api).
 npm install async-xenapi
 ```
 
-Requires **Node.js 24+** (uses the global `fetch` API).
+Requires **Node.js 24+**.
 
 ## Usage
 
