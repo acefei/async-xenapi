@@ -21,19 +21,7 @@ async-xenapi/
 
 **Python** — see [python/README.md](python/README.md)
 
-```python
-from async_xenapi import AsyncXenAPISession
-import asyncio
-
-async def main():
-    session = AsyncXenAPISession("https://xen-host")
-    await session.login_with_password("root", "password")
-    hosts = await session.xenapi.host.get_all()
-    print(hosts)
-    await session.logout()
-
-asyncio.run(main())
-```
+See runnable tools in [`python/examples/`](python/examples/) — [`create-vm-async.py`](python/examples/create-vm-async.py) (create & start a VM) and [`vnc-direct.py`](python/examples/vnc-direct.py) (relay a VM console to a local VNC port).
 
 **JavaScript / TypeScript** — see [javascript/README.md](javascript/README.md)
 
