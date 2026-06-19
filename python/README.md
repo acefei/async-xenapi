@@ -125,9 +125,6 @@ LGPL-2.1-only
 
 ## Examples
 
-Runnable tools using this library live in [`examples/`](examples/):
-
-- [`create-vm-async.py`](examples/create-vm-async.py) — create & start a VM end-to-end (concurrent inventory reads, vTPM/UEFI/boot handling).
-- [`vnc-direct.py`](examples/vnc-direct.py) — relay a VM's VNC console to a local port.
-
-See [`examples/README.md`](examples/README.md) for details.
+[`examples/xsvm.py`](examples/) — a runnable tool using this library to create
+XenServer VMs (`xsvm create`) and relay a VM's VNC console to a local port
+(`xsvm console`). See [`examples/README.md`](examples/README.md).

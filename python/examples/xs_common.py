@@ -3,9 +3,11 @@
 
 - load_dotenv / load_env_files : .env loading (stdlib).
 - TLS_CONTEXT                  : self-signed TLS context for raw socket work
-                                 (vnc-direct.py's console CONNECT tunnel).
+                                 (xs-vnc-direct.py's console CONNECT tunnel).
 - connect_async               : XenAPI login via the async-xenapi library,
                                  following a HOST_IS_SLAVE redirect to the master.
+- session_ref_for_relay        : extract the session_id ref and release the HTTP
+                                 client without logging out (for a sync console relay).
 
 All XenServer login goes through async-xenapi (`pip install async-xenapi`); there
 is no hand-rolled sync XML-RPC login anymore. When a tool is run as
@@ -72,3 +74,16 @@ async def connect_async(host, user, pw):
         session = AsyncXenAPISession(f"https://{master}")
         await session.login_with_password(user, pw)
         return session
+
+
+async def session_ref_for_relay(session):
+    """Return the session_id (an OpaqueRef string) and close the library's HTTP
+    connections WITHOUT logging out, so a separate sync client (e.g. a VNC console
+    CONNECT relay) can keep reusing the ref. Centralizes the one spot that touches
+    async-xenapi internals; update here if the library renames those attributes."""
+    ref = session._session_ref
+    try:
+        await session._http.close()
+    except Exception:
+        pass
+    return ref

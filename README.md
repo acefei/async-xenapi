@@ -21,7 +21,7 @@ async-xenapi/
 
 **Python** — see [python/README.md](python/README.md)
 
-See runnable tools in [`python/examples/`](python/examples/) — [`create-vm-async.py`](python/examples/create-vm-async.py) (create & start a VM) and [`vnc-direct.py`](python/examples/vnc-direct.py) (relay a VM console to a local VNC port).
+See the runnable tool in [`python/examples/`](python/examples/) — [`xsvm.py`](python/examples/xsvm.py): `xsvm create …` to provision a VM and `xsvm console …` to relay its VNC console to a local port.
 
 **JavaScript / TypeScript** — see [javascript/README.md](javascript/README.md)
 
