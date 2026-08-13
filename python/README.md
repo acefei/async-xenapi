@@ -14,7 +14,7 @@ Or with `uv`:
 uv add async-xenapi
 ```
 
-Requires **Python 3.12+**.
+Requires **Python 3.9+**.
 
 ## Usage
 

@@ -17,7 +17,15 @@ precedence is real env var > .env > default, and a CLI flag overrides all.
 
 Requires: pip install async-xenapi  (or run via `uv run xsvm.py …` — PEP 723 auto-installs).
 """
-import argparse, asyncio, getpass, os, socket, sys, threading, urllib.parse
+import argparse
+import asyncio
+import contextlib
+import getpass
+import os
+import socket
+import sys
+import threading
+import urllib.parse
 
 from xs_common import TLS_CONTEXT, connect_async, load_env_files, session_ref_for_relay
 
@@ -30,10 +38,8 @@ async def _optional(coro):
     """Await an optional XAPI call, swallowing failure — for cleanup/feature steps
     that legitimately no-op on some pool configs or VM states (e.g. removing a map
     key that isn't present)."""
-    try:
+    with contextlib.suppress(Exception):
         await coro
-    except Exception:
-        pass
 
 
 # ───────────────────────────── create: pure pickers ─────────────────────────
@@ -244,10 +250,8 @@ def preflight(location, session):
     if "200" in status:
         banner = b""
         tls.settimeout(5)
-        try:
+        with contextlib.suppress(OSError):
             banner = tls.recv(16)
-        except OSError:
-            pass
         tls.close()
         ok = banner.startswith(b"RFB")
         print(f"[preflight] OK — session accepted, console reachable ({status})"
@@ -274,10 +278,8 @@ def pump(a, b):
         pass
     finally:
         for s in (a, b):
-            try:
+            with contextlib.suppress(OSError):
                 s.shutdown(socket.SHUT_RDWR)
-            except OSError:
-                pass
 
 
 def handle(client, location, session):

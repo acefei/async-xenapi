@@ -1,0 +1,78 @@
+name: Python CI
+
+# Guards the floor declared in python/pyproject.toml. The matrix mirrors the
+# "Programming Language :: Python :: 3.x" classifiers, so every version the
+# package claims is proven to import. This catches the class of regression
+# where a 3.14-only construct (for example an unquoted forward reference, which
+# only PEP 649 defers) silently breaks every older interpreter.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'python/**'
+      - '.github/workflows/python-ci.yml'
+  pull_request:
+    paths:
+      - 'python/**'
+      - '.github/workflows/python-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  import:
+    name: import on py${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Create a clean venv on the target interpreter
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Install the package and its runtime dependencies
+        run: uv pip install .
+
+      - name: Import the package
+        run: |
+          .venv/bin/python -c "
+          import sys
+          from async_xenapi import AsyncXenAPISession
+          print('import OK on', sys.version.split()[0], '->', AsyncXenAPISession)
+          "
+
+  lint:
+    name: ruff
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # CI pins an exact ruff so a new release cannot add rules and turn a green
+      # branch red without a code change; bump it deliberately. The dev group
+      # declares a floor (`ruff>=0.15.2`), not a pin, so a local `uv sync
+      # --upgrade` may resolve a newer ruff than this job runs. Both 0.15.2 and
+      # 0.16.2 are clean today; if local and CI ever disagree, this line is the
+      # source of truth.
+      - run: uvx ruff@0.16.2 check .
+
+  build:
+    name: build sdist and wheel
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build
+      - run: ls -l dist

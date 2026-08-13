@@ -14,6 +14,12 @@ Usage mirrors the synchronous XenAPI SDK:
     await session.logout()
 """
 
+# Defers annotation evaluation (PEP 563). _MethodProxy is annotated with
+# AsyncXenAPISession, which is defined further down this file, so without this
+# the import raises NameError on every Python before 3.14 (PEP 649 makes the
+# deferral the default only from 3.14).
+from __future__ import annotations
+
 import contextlib
 import ssl
 import uuid

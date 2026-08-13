@@ -5,7 +5,7 @@ description = "An async library for XenAPI"
 readme = "README.md"
 license = { text = "LGPL-2.1-only" }
 authors = [{ name = "Su Fei", email = "acefei@163.com" }]
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 dependencies = ["aiohttp>=3.9"]
 keywords = ["xenserver", "xen-api", "async"]
 classifiers = [
@@ -13,7 +13,12 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: System :: Systems Administration",
     "Typing :: Typed",
 ]
@@ -34,7 +39,7 @@ only-include = ["src/", "README.md", "pyproject.toml"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py314"
+target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

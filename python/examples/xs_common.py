@@ -14,7 +14,11 @@ is no hand-rolled sync XML-RPC login anymore. When a tool is run as
 `python3 /path/xs-foo.py`, its directory is on sys.path, so this sibling module
 imports cleanly regardless of the current directory.
 """
-import os, re, ssl, sys
+import contextlib
+import os
+import re
+import ssl
+import sys
 
 from async_xenapi import AsyncXenAPISession
 
@@ -64,10 +68,8 @@ async def connect_async(host, user, pw):
         return session
     except Exception as e:                       # noqa: BLE001 — inspect for slave redirect
         master = _slave_master(e)
-        try:
+        with contextlib.suppress(Exception):
             await session.logout()
-        except Exception:
-            pass
         if not master:
             sys.exit(f"[login] FAILED: {e}")
         print(f"[login] {host} is a pool member; redirecting to master {master}")
@@ -82,8 +84,6 @@ async def session_ref_for_relay(session):
     CONNECT relay) can keep reusing the ref. Centralizes the one spot that touches
     async-xenapi internals; update here if the library renames those attributes."""
     ref = session._session_ref
-    try:
+    with contextlib.suppress(Exception):
         await session._http.close()
-    except Exception:
-        pass
     return ref
