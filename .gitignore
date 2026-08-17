@@ -5,3 +5,9 @@
 **/*.egg-info/
 **/.venv/
 **/.pytest_cache/
+# xscert.py writes a CA + client certificate, including private keys
+**/certs/
+*.key
+*.crt
+*.csr
+*.srl
