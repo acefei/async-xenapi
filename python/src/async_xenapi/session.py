@@ -67,6 +67,37 @@ def _jsonrpc_req(method: str, params: list[Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+class XenAPIError(RuntimeError):
+    """A XAPI call returned a JSON-RPC error.
+
+    Subclasses RuntimeError so existing ``except RuntimeError`` keeps working.
+
+    The structured error is preserved so callers do not have to match on the
+    rendered string:
+
+        try:
+            await session.xenapi.VM.start(vm, False, False)
+        except XenAPIError as e:
+            if e.code == "RBAC_PERMISSION_DENIED":
+                ...
+
+    ``code`` is XAPI's error name (``RBAC_PERMISSION_DENIED``,
+    ``HANDLE_INVALID``, ...), which JSON-RPC carries in the ``message`` field;
+    ``params`` is XAPI's error parameter list; ``error`` is the raw object.
+    """
+
+    def __init__(self, method: str, error: Any):
+        self.method = method
+        self.error = error
+        if isinstance(error, dict):
+            self.code = error.get("message")
+            self.params = error.get("data") or []
+        else:  # a server that does not follow the shape we expect
+            self.code = None
+            self.params = []
+        super().__init__(f"XAPI {method} failed: {error}")
+
+
 class _MethodProxy:
     """Accumulates dotted attribute access (e.g. VM.get_all) then turns the
     final call into an awaitable JSON-RPC request."""
@@ -133,7 +164,7 @@ class AsyncXenAPISession:
         )
         ret = await self._post(payload)
         if "error" in ret:
-            raise RuntimeError(f"Login failed: {ret['error']}")
+            raise XenAPIError("session.login_with_password", ret["error"])
         self._session_ref = ret["result"]
         return self._session_ref
 
@@ -154,5 +185,5 @@ class AsyncXenAPISession:
         payload = _jsonrpc_req(method, [self._session_ref] + params)
         ret = await self._post(payload)
         if "error" in ret:
-            raise RuntimeError(f"XAPI {method} failed: {ret['error']}")
+            raise XenAPIError(method, ret["error"])
         return ret["result"]
