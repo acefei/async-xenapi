@@ -12,6 +12,17 @@ Usage mirrors the synchronous XenAPI SDK:
         print(record["name_label"])
 
     await session.logout()
+
+To authenticate with a TLS client certificate instead of a password, pass an
+SSL context that presents it. XAPI ignores the credentials on such a
+connection and assigns the built-in ``client-cert`` role:
+
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.load_cert_chain("client.crt", "client.key")
+    session = AsyncXenAPISession("https://host-ip", ssl_context=ctx)
+    await session.login_with_password("ignored", "ignored")
+
+See ``examples/xscert.py`` for the full flow, including installing the CA.
 """
 
 # Defers annotation evaluation (PEP 563). _MethodProxy is annotated with
@@ -84,15 +95,29 @@ class _XenAPINamespace:
 class AsyncXenAPISession:
     """Lightweight async wrapper around XAPI's JSON-RPC endpoint using aiohttp."""
 
-    def __init__(self, url: str):
+    def __init__(self, url: str, ssl_context: ssl.SSLContext | None = None):
+        """Create a session against ``url``.
+
+        ``ssl_context`` overrides the module default for this session only. Pass
+        one built with ``load_cert_chain()`` to authenticate with a TLS client
+        certificate instead of a password; scoping it per instance means a
+        certificate cannot leak onto an unrelated password session in the same
+        process. Omit it to keep the previous behaviour.
+        """
         self._url = f"{url.rstrip('/')}/jsonrpc"
+        self._ssl_ctx = ssl_context if ssl_context is not None else _ssl_ctx
         self._http: aiohttp.ClientSession | None = None
         self._session_ref: str | None = None
         self.xenapi = _XenAPINamespace(self)
 
+    @property
+    def session_ref(self) -> str | None:
+        """The current session ref, or None before login / after logout."""
+        return self._session_ref
+
     def _ensure_http(self) -> aiohttp.ClientSession:
         if self._http is None or self._http.closed:
-            connector = aiohttp.TCPConnector(ssl=_ssl_ctx)
+            connector = aiohttp.TCPConnector(ssl=self._ssl_ctx)
             self._http = aiohttp.ClientSession(connector=connector)
         return self._http
 
