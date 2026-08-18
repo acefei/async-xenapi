@@ -36,7 +36,7 @@ from pathlib import Path
 
 from xs_common import connect_async, load_env_files
 
-from async_xenapi import AsyncXenAPISession
+from async_xenapi import AsyncXenAPISession, XenAPIError, client_cert_context
 
 PROG = os.path.basename(sys.argv[0]) or "xscert.py"
 
@@ -101,20 +101,30 @@ VM_CONTRAST = [
 ]
 
 
-def classify(err: str) -> str:
-    """Turn an XAPI error into a permission verdict."""
-    if "RBAC_PERMISSION_DENIED" in err or "PERMISSION_DENIED" in err:
+DENIED_CODES = {"RBAC_PERMISSION_DENIED", "PERMISSION_DENIED"}
+BAD_REF_CODES = {"HANDLE_INVALID", "UUID_INVALID"}
+VALIDATION_CODES = {"CERTIFICATE_NAME_INVALID", "CERTIFICATE_DOES_NOT_EXIST"}
+
+
+def classify(e: XenAPIError) -> str:
+    """Turn an XAPI error into a permission verdict.
+
+    Reads e.code -- XAPI's error name -- rather than matching substrings in the
+    rendered message, so a verdict cannot hinge on how the error prints.
+    """
+    if e.code in DENIED_CODES:
         return "DENIED  (RBAC)"
-    if "HANDLE_INVALID" in err or "UUID_INVALID" in err:
+    if e.code in BAD_REF_CODES:
         return "ALLOWED (passed RBAC, bad ref as expected)"
     # Reaching argument validation means the call already cleared RBAC.
-    if "CERTIFICATE_NAME_INVALID" in err or "CERTIFICATE_DOES_NOT_EXIST" in err:
+    if e.code in VALIDATION_CODES:
         return "ALLOWED (passed RBAC, rejected at validation)"
-    if "MESSAGE_PARAMETER_COUNT_MISMATCH" in err:
+    if e.code == "MESSAGE_PARAMETER_COUNT_MISMATCH":
+        # Raised before the RBAC check, so it says nothing about permission.
         return "INCONCLUSIVE (wrong arity — fix the args in POOL_PROBES)"
     # Never guess "allowed" from an error we do not recognise: this table gets
     # quoted as evidence, so an unknown result has to look unknown.
-    return f"UNKNOWN ({err.splitlines()[0][:60]})"
+    return f"UNKNOWN ({e.code or str(e).splitlines()[0][:60]})"
 
 
 # ──────────────────────────────── certificates ───────────────────────────────
@@ -171,11 +181,7 @@ def cert_ssl_context(certdir: Path) -> ssl.SSLContext:
     missing = [p.name for p in (certdir / "client.crt", certdir / "client.key") if not p.exists()]
     if missing:
         sys.exit(f"[cert] {', '.join(missing)} not found in {certdir} — run `{PROG} setup` first")
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    ctx.load_cert_chain(certfile=str(certdir / "client.crt"), keyfile=str(certdir / "client.key"))
-    return ctx
+    return client_cert_context(str(certdir / "client.crt"), str(certdir / "client.key"))
 
 
 async def cert_session(host: str, certdir: Path) -> AsyncXenAPISession:
@@ -188,8 +194,8 @@ async def cert_session(host: str, certdir: Path) -> AsyncXenAPISession:
     session = AsyncXenAPISession(f"https://{host}", ssl_context=cert_ssl_context(certdir))
     try:
         await session.login_with_password("not-a-real-user", "not-a-real-password")
-    except RuntimeError as e:
-        if "SESSION_AUTHENTICATION_FAILED" not in str(e):
+    except XenAPIError as e:
+        if e.code != "SESSION_AUTHENTICATION_FAILED":
             raise
         # stunnel's [xapi] service sets `redirect = 80`, so a certificate it refuses
         # is not rejected at the TLS layer: the connection is quietly re-pointed at
@@ -213,8 +219,8 @@ async def drop_anchor(session, name: str, tag: str) -> None:
     try:
         await session.xenapi.pool.uninstall_ca_certificate(ca_name(name), False)
         print(f"[{tag}] removed {ca_name(name)}")
-    except RuntimeError as e:
-        if "CERTIFICATE_DOES_NOT_EXIST" not in str(e):
+    except XenAPIError as e:
+        if e.code != "CERTIFICATE_DOES_NOT_EXIST":
             raise
         print(f"[{tag}] no existing {ca_name(name)} to remove")
 
@@ -271,8 +277,8 @@ async def probe_one(session, method: str, call_args: list) -> str:
     cls, name = method.split(".", 1)
     try:
         await getattr(getattr(session.xenapi, cls), name)(*call_args)
-    except RuntimeError as e:
-        return classify(str(e))
+    except XenAPIError as e:
+        return classify(e)
     # Nothing here should succeed: every probe is armed with an argument that
     # cannot resolve. A success means the guard failed, not that the call is fine.
     return "UNEXPECTED SUCCESS — the probe argument resolved; check POOL_PROBES"
