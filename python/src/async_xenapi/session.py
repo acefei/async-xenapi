@@ -67,6 +67,44 @@ def _jsonrpc_req(method: str, params: list[Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def client_cert_context(
+    certfile: str,
+    keyfile: str | None = None,
+    *,
+    cafile: str | None = None,
+    check_hostname: bool = True,
+) -> ssl.SSLContext:
+    """Build an SSL context that presents a TLS client certificate.
+
+    Pass the result as ``AsyncXenAPISession(url, ssl_context=...)`` to
+    authenticate with a certificate instead of a password::
+
+        ctx = client_cert_context("client.crt", "client.key")
+        session = AsyncXenAPISession("https://pool", ssl_context=ctx)
+        await session.login_with_password("ignored", "ignored")
+
+    The certificate's CN/SAN must equal the pool's
+    ``client_certificate_auth_name``; XenServer's stunnel enforces that as
+    ``checkHost``.
+
+    ``cafile`` verifies the *server* against a CA bundle. Omit it and server
+    verification is **disabled**, which is convenient against a lab pool
+    presenting a self-signed certificate but leaves the channel encrypted
+    without authenticating the peer -- pass ``cafile`` anywhere it matters.
+    """
+    ctx = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS_CLIENT)
+    if cafile is not None:
+        ctx.load_verify_locations(cafile)
+        ctx.check_hostname = check_hostname
+        ctx.verify_mode = ssl.CERT_REQUIRED
+    else:
+        # Must be cleared before verify_mode, or CPython raises.
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    ctx.load_cert_chain(certfile=certfile, keyfile=keyfile)
+    return ctx
+
+
 class XenAPIError(RuntimeError):
     """A XAPI call returned a JSON-RPC error.
 
