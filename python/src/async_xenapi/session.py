@@ -67,6 +67,75 @@ def _jsonrpc_req(method: str, params: list[Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def client_cert_context(
+    certfile: str,
+    keyfile: str | None = None,
+    *,
+    cafile: str | None = None,
+    check_hostname: bool = True,
+) -> ssl.SSLContext:
+    """Build an SSL context that presents a TLS client certificate.
+
+    Pass the result as ``AsyncXenAPISession(url, ssl_context=...)`` to
+    authenticate with a certificate instead of a password::
+
+        ctx = client_cert_context("client.crt", "client.key")
+        session = AsyncXenAPISession("https://pool", ssl_context=ctx)
+        await session.login_with_password("ignored", "ignored")
+
+    The certificate's CN/SAN must equal the pool's
+    ``client_certificate_auth_name``; XenServer's stunnel enforces that as
+    ``checkHost``.
+
+    ``cafile`` verifies the *server* against a CA bundle. Omit it and server
+    verification is **disabled**, which is convenient against a lab pool
+    presenting a self-signed certificate but leaves the channel encrypted
+    without authenticating the peer -- pass ``cafile`` anywhere it matters.
+    """
+    ctx = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS_CLIENT)
+    if cafile is not None:
+        ctx.load_verify_locations(cafile)
+        ctx.check_hostname = check_hostname
+        ctx.verify_mode = ssl.CERT_REQUIRED
+    else:
+        # Must be cleared before verify_mode, or CPython raises.
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    ctx.load_cert_chain(certfile=certfile, keyfile=keyfile)
+    return ctx
+
+
+class XenAPIError(RuntimeError):
+    """A XAPI call returned a JSON-RPC error.
+
+    Subclasses RuntimeError so existing ``except RuntimeError`` keeps working.
+
+    The structured error is preserved so callers do not have to match on the
+    rendered string:
+
+        try:
+            await session.xenapi.VM.start(vm, False, False)
+        except XenAPIError as e:
+            if e.code == "RBAC_PERMISSION_DENIED":
+                ...
+
+    ``code`` is XAPI's error name (``RBAC_PERMISSION_DENIED``,
+    ``HANDLE_INVALID``, ...), which JSON-RPC carries in the ``message`` field;
+    ``params`` is XAPI's error parameter list; ``error`` is the raw object.
+    """
+
+    def __init__(self, method: str, error: Any):
+        self.method = method
+        self.error = error
+        if isinstance(error, dict):
+            self.code = error.get("message")
+            self.params = error.get("data") or []
+        else:  # a server that does not follow the shape we expect
+            self.code = None
+            self.params = []
+        super().__init__(f"XAPI {method} failed: {error}")
+
+
 class _MethodProxy:
     """Accumulates dotted attribute access (e.g. VM.get_all) then turns the
     final call into an awaitable JSON-RPC request."""
@@ -133,7 +202,7 @@ class AsyncXenAPISession:
         )
         ret = await self._post(payload)
         if "error" in ret:
-            raise RuntimeError(f"Login failed: {ret['error']}")
+            raise XenAPIError("session.login_with_password", ret["error"])
         self._session_ref = ret["result"]
         return self._session_ref
 
@@ -154,5 +223,5 @@ class AsyncXenAPISession:
         payload = _jsonrpc_req(method, [self._session_ref] + params)
         ret = await self._post(payload)
         if "error" in ret:
-            raise RuntimeError(f"XAPI {method} failed: {ret['error']}")
+            raise XenAPIError(method, ret["error"])
         return ret["result"]

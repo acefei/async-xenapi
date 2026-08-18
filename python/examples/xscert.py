@@ -34,8 +34,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from async_xenapi import AsyncXenAPISession
 from xs_common import connect_async, load_env_files
+
+from async_xenapi import AsyncXenAPISession
 
 PROG = os.path.basename(sys.argv[0]) or "xscert.py"
 
@@ -259,7 +260,7 @@ async def cmd_login(args) -> None:
         # The client-cert role sits above read-only in the role order, and every
         # getter is _R_READ_ONLY, so reads work without any explicit grant.
         pools = await session.xenapi.pool.get_all_records()
-        for ref, pool in pools.items():
+        for pool in pools.values():
             print(f"[login] pool read: {pool.get('name_label')!r} "
                   f"(cert auth name {pool.get('client_certificate_auth_name')!r})")
     finally:
